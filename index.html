@@ -1,0 +1,1355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Certificate Tracker</title>
+  <link rel="icon" type="image/x-icon" href="https://www.microsoft.com/favicon.ico">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <style>
+    /* --- CSS Reset & Global Variables --- */
+    :root {
+      --font: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+      --font-size-base: 22px;
+
+      /* Dark Theme Default */
+      --bg-page: #030712;
+      --text-main: #f8fafc;
+      --text-muted: #cbd5e1;
+      --nav-bg: rgba(3, 7, 18, 0.85);
+      --card-bg: rgba(15, 23, 42, 0.8);
+      --card-border: rgba(255, 255, 255, 0.15);
+      --input-bg: rgba(255, 255, 255, 0.08);
+
+      /* Accent Gradients */
+      --primary-blue: #3b82f6;
+      --primary-gradient: linear-gradient(135deg, #4f46e5 0%, #2563eb 100%);
+      --congrats-gradient: linear-gradient(135deg, #059669 0%, #10b981 100%);
+      --gemini-gradient: linear-gradient(135deg, #a855f7 0%, #6366f1 50%, #3b82f6 100%);
+      
+      /* Domain Specific Accents */
+      --ai-purple: #8b5cf6;
+      --cloud-blue: #3b82f6;
+      --cyber-green: #10b981;
+      --dev-orange: #f97316;
+    }
+
+    [data-theme="light"] {
+      --bg-page: #f1f5f9;
+      --text-main: #0f172a;
+      --text-muted: #334155;
+      --nav-bg: rgba(255, 255, 255, 0.9);
+      --card-bg: rgba(255, 255, 255, 0.95);
+      --card-border: #cbd5e1;
+      --input-bg: #ffffff;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: var(--font);
+      font-size: var(--font-size-base);
+      background-color: var(--bg-page);
+      color: var(--text-main);
+      line-height: 1.7;
+      transition: background-color 0.3s ease, color 0.3s ease;
+      position: relative;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    a {
+      text-decoration: none;
+      color: inherit;
+    }
+
+    .animated-bg {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: -1;
+      pointer-events: none;
+      background: 
+        radial-gradient(circle at 15% 20%, rgba(99, 102, 241, 0.25) 0%, transparent 45%),
+        radial-gradient(circle at 85% 30%, rgba(139, 92, 246, 0.25) 0%, transparent 45%),
+        radial-gradient(circle at 50% 80%, rgba(16, 185, 129, 0.2) 0%, transparent 50%);
+      filter: blur(40px);
+      animation: pulseBg 12s ease-in-out infinite alternate;
+    }
+
+    @keyframes pulseBg {
+      0% { transform: scale(1) translate(0, 0); }
+      50% { transform: scale(1.08) translate(-15px, 15px); }
+      100% { transform: scale(1) translate(0, 0); }
+    }
+
+    .view-page {
+      display: none;
+    }
+
+    .view-page.active {
+      display: block;
+    }
+
+    .navbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1.5rem 5%;
+      background: var(--nav-bg);
+      backdrop-filter: blur(16px);
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      border-bottom: 1px solid var(--card-border);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.85rem;
+      font-weight: 800;
+      font-size: 1.85rem;
+      cursor: pointer;
+    }
+
+    .ms-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 14px);
+      gap: 4px;
+    }
+    .ms-grid div { width: 14px; height: 14px; }
+    .ms-red { background: #f25022; }
+    .ms-green { background: #7fba00; }
+    .ms-blue { background: #00a4ef; }
+    .ms-yellow { background: #ffb900; }
+
+    .nav-links {
+      display: flex;
+      gap: 2.2rem;
+      list-style: none;
+      font-size: 1.3rem;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+
+    .nav-links a:hover, .nav-links a.active {
+      color: var(--text-main);
+    }
+
+    .nav-actions {
+      display: flex;
+      gap: 1.25rem;
+      align-items: center;
+    }
+
+    .theme-toggle {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      color: var(--text-main);
+      padding: 0.7rem 1.3rem;
+      border-radius: 20px;
+      cursor: pointer;
+      font-weight: 700;
+      font-size: 1.15rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      transition: all 0.2s ease;
+    }
+
+    .theme-toggle:hover {
+      transform: scale(1.05);
+    }
+
+    .btn-login {
+      padding: 0.75rem 1.6rem;
+      border-radius: 8px;
+      border: 1px solid var(--card-border);
+      font-size: 1.2rem;
+      font-weight: 700;
+      cursor: pointer;
+      background: transparent;
+      color: var(--text-main);
+    }
+
+    .btn-signup {
+      padding: 0.75rem 1.6rem;
+      border-radius: 8px;
+      background: var(--primary-gradient);
+      color: white;
+      font-size: 1.2rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .user-profile {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .user-name {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: #60a5fa;
+    }
+
+    .auth-container {
+      min-height: calc(100vh - 90px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2.5rem 5%;
+    }
+
+    .auth-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      backdrop-filter: blur(16px);
+      border-radius: 20px;
+      padding: 3.5rem;
+      width: 100%;
+      max-width: 540px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.3);
+    }
+
+    .auth-title {
+      font-size: 2.5rem;
+      font-weight: 800;
+      margin-bottom: 0.6rem;
+      text-align: center;
+    }
+
+    .auth-subtitle {
+      font-size: 1.2rem;
+      color: var(--text-muted);
+      margin-bottom: 2.2rem;
+      text-align: center;
+    }
+
+    .form-group {
+      margin-bottom: 1.75rem;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 1.2rem;
+      font-weight: 700;
+      margin-bottom: 0.6rem;
+    }
+
+    .form-group input {
+      width: 100%;
+      padding: 1rem 1.25rem;
+      background: var(--input-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      color: var(--text-main);
+      font-family: var(--font);
+      font-size: 1.15rem;
+      outline: none;
+    }
+
+    .auth-btn {
+      width: 100%;
+      padding: 1.15rem;
+      background: var(--primary-gradient);
+      border: none;
+      border-radius: 10px;
+      color: white;
+      font-weight: 800;
+      font-size: 1.3rem;
+      cursor: pointer;
+      margin-top: 0.75rem;
+    }
+
+    .auth-footer {
+      margin-top: 1.75rem;
+      text-align: center;
+      font-size: 1.15rem;
+      color: var(--text-muted);
+    }
+
+    .auth-footer a {
+      color: var(--primary-blue);
+      font-weight: 700;
+    }
+
+    .error-msg {
+      color: #ef4444;
+      font-size: 1.05rem;
+      margin-top: 0.6rem;
+      display: none;
+    }
+
+    .hero {
+      position: relative;
+      padding: 5rem 5% 6rem;
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      align-items: center;
+      gap: 3rem;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.6rem 1.3rem;
+      border-radius: 30px;
+      background: rgba(59, 130, 246, 0.15);
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      color: #60a5fa;
+      font-size: 1.15rem;
+      font-weight: 700;
+      margin-bottom: 1.75rem;
+    }
+
+    .hero-title {
+      font-size: 4.5rem;
+      font-weight: 800;
+      line-height: 1.15;
+      margin-bottom: 1.75rem;
+    }
+
+    .hero-title span {
+      background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hero-desc {
+      color: var(--text-muted);
+      font-size: 1.45rem;
+      max-width: 650px;
+      margin-bottom: 2.75rem;
+    }
+
+    .hero-buttons {
+      display: flex;
+      gap: 1.25rem;
+    }
+
+    .btn-primary {
+      padding: 1.15rem 2.25rem;
+      border-radius: 12px;
+      background: var(--primary-gradient);
+      color: white;
+      font-size: 1.25rem;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.6rem;
+      box-shadow: 0 6px 20px rgba(37, 99, 235, 0.4);
+    }
+
+    .btn-secondary {
+      padding: 1.15rem 2.25rem;
+      border-radius: 12px;
+      border: 1px solid var(--card-border);
+      background: var(--card-bg);
+      font-size: 1.25rem;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+
+    .hero-visual {
+      position: relative;
+      display: flex;
+      justify-content: center;
+    }
+
+    .cert-card-3d {
+      width: 100%;
+      max-width: 480px;
+      background: #ffffff;
+      color: #0f172a;
+      border-radius: 20px;
+      padding: 2.75rem;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4);
+      border: 1px solid var(--card-border);
+    }
+
+    .features-ribbon {
+      background: var(--card-bg);
+      backdrop-filter: blur(12px);
+      padding: 3.5rem 5%;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 2.5rem;
+      border-top: 1px solid var(--card-border);
+      border-bottom: 1px solid var(--card-border);
+    }
+
+    .feature-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 1.2rem;
+    }
+
+    .feature-icon {
+      width: 60px;
+      height: 60px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.8rem;
+      flex-shrink: 0;
+    }
+
+    .f-1 { background: #eff6ff; color: #3b82f6; }
+    .f-2 { background: #f0fdf4; color: #10b981; }
+    .f-3 { background: #fefce8; color: #eab308; }
+    .f-4 { background: #f0f9ff; color: #0284c7; }
+
+    .feature-text h4 { font-size: 1.35rem; font-weight: 800; }
+    .feature-text p { font-size: 1.15rem; color: var(--text-muted); }
+
+    .domains-section {
+      padding: 5rem 5% 7rem;
+      text-align: center;
+    }
+
+    .section-title {
+      font-size: 3rem;
+      font-weight: 800;
+      margin-bottom: 0.85rem;
+    }
+
+    .section-subtitle {
+      color: var(--text-muted);
+      font-size: 1.35rem;
+      margin-bottom: 3.5rem;
+    }
+
+    .domain-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 2.25rem;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    .domain-card {
+      background: var(--card-bg);
+      border-radius: 20px;
+      border: 1px solid var(--card-border);
+      overflow: hidden;
+      transition: all 0.3s ease;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      cursor: pointer;
+      box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+    }
+
+    .domain-card:hover {
+      transform: translateY(-8px);
+      box-shadow: 0 20px 30px rgba(0, 0, 0, 0.2);
+    }
+
+    .domain-img-wrapper {
+      width: 100%;
+      height: 220px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .domain-img-wrapper img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform 0.4s ease;
+    }
+
+    .domain-card:hover .domain-img-wrapper img {
+      transform: scale(1.08);
+    }
+
+    .domain-content {
+      padding: 2.25rem;
+      text-align: left;
+      flex-grow: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .domain-card h3 { font-size: 1.65rem; font-weight: 800; margin-bottom: 0.6rem; }
+    .domain-card p { font-size: 1.15rem; color: var(--text-muted); margin-bottom: 1.75rem; line-height: 1.6; }
+
+    .domain-link {
+      font-size: 1.2rem;
+      font-weight: 800;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .link-ai { color: var(--ai-purple); }
+    .link-cloud { color: var(--cloud-blue); }
+    .link-cyber { color: var(--cyber-green); }
+    .link-dev { color: var(--dev-orange); }
+
+    .courses-page {
+      min-height: 80vh;
+      padding: 4rem 5% 7rem;
+    }
+
+    .courses-container {
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    .btn-back {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-weight: 700;
+      font-size: 1.25rem;
+      cursor: pointer;
+      margin-bottom: 2rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .progress-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 20px;
+      padding: 2.5rem;
+      margin-bottom: 2.25rem;
+      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+    }
+
+    .progress-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      margin-bottom: 1rem;
+    }
+
+    .progress-title { font-size: 1.3rem; font-weight: 800; color: var(--text-muted); }
+    .progress-percent { font-size: 2.75rem; font-weight: 800; color: var(--primary-blue); }
+
+    .progress-bar-bg {
+      width: 100%;
+      height: 20px;
+      background: rgba(148, 163, 184, 0.2);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      background: var(--primary-gradient);
+      width: 0%;
+      transition: width 0.4s ease;
+    }
+
+    .progress-count {
+      font-size: 1.2rem;
+      color: var(--text-muted);
+      margin-top: 0.85rem;
+      font-weight: 600;
+    }
+
+    /* --- Gemini AI Assistant Card --- */
+    .gemini-card {
+      background: var(--card-bg);
+      border: 1px solid rgba(168, 85, 247, 0.4);
+      border-radius: 20px;
+      padding: 2rem 2.5rem;
+      margin-bottom: 2.75rem;
+      box-shadow: 0 10px 25px rgba(139, 92, 246, 0.15);
+      position: relative;
+      overflow: hidden;
+      animation: fadeIn 0.4s ease-out;
+    }
+
+    .gemini-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 6px;
+      height: 100%;
+      background: var(--gemini-gradient);
+    }
+
+    .gemini-header {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .gemini-badge {
+      background: var(--gemini-gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      font-weight: 800;
+      font-size: 1.3rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .gemini-text {
+      font-size: 1.2rem;
+      line-height: 1.6;
+      color: var(--text-main);
+      font-weight: 500;
+    }
+
+    .congrats-card {
+      display: none;
+      background: var(--congrats-gradient);
+      color: #ffffff;
+      border-radius: 20px;
+      padding: 3rem;
+      text-align: center;
+      margin-bottom: 2.75rem;
+      box-shadow: 0 15px 30px rgba(16, 185, 129, 0.3);
+      animation: fadeIn 0.5s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .congrats-card h3 { font-size: 2.4rem; font-weight: 800; margin-bottom: 0.85rem; }
+    .congrats-card p { font-size: 1.35rem; margin-bottom: 2rem; opacity: 0.95; }
+
+    .btn-congrats {
+      padding: 1.15rem 2.5rem;
+      border-radius: 12px;
+      background: #ffffff;
+      color: #047857;
+      font-size: 1.3rem;
+      font-weight: 800;
+      border: none;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.6rem;
+      box-shadow: 0 6px 15px rgba(0,0,0,0.2);
+      transition: transform 0.2s ease;
+    }
+
+    .btn-congrats:hover {
+      transform: scale(1.05);
+    }
+
+    .course-list {
+      display: flex;
+      flex-direction: column;
+      gap: 1.75rem;
+    }
+
+    .course-item {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 20px;
+      padding: 2.25rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 2rem;
+      transition: all 0.2s ease;
+    }
+
+    .course-item.completed {
+      border-color: #10b981;
+      background: rgba(16, 185, 129, 0.08);
+    }
+
+    .course-item.locked {
+      opacity: 0.55;
+      background: rgba(148, 163, 184, 0.05);
+    }
+
+    .course-info h4 { font-size: 1.45rem; font-weight: 800; margin-bottom: 0.6rem; }
+    .course-info p { font-size: 1.2rem; color: var(--text-muted); line-height: 1.6; }
+
+    .course-actions {
+      display: flex;
+      align-items: center;
+      gap: 1.1rem;
+      flex-shrink: 0;
+    }
+
+    .btn-learn {
+      padding: 0.85rem 1.6rem;
+      border-radius: 10px;
+      background: #00a4ef;
+      color: white;
+      font-size: 1.15rem;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .btn-learn.disabled {
+      background: #94a3b8;
+      pointer-events: none;
+      cursor: not-allowed;
+    }
+
+    .btn-status {
+      padding: 0.85rem 1.6rem;
+      border-radius: 10px;
+      border: 1px solid var(--card-border);
+      background: var(--card-bg);
+      color: var(--text-main);
+      font-size: 1.15rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .btn-status:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .course-item.completed .btn-status {
+      background: #10b981;
+      border-color: #10b981;
+      color: white;
+    }
+
+    @media (max-width: 900px) {
+      .hero { grid-template-columns: 1fr; text-align: center; }
+      .hero-title { font-size: 3.2rem; }
+      .hero-desc { margin: 0 auto 2.5rem; }
+      .hero-buttons { justify-content: center; }
+      .hero-visual { display: none; }
+      .nav-links { display: none; }
+      .course-item { flex-direction: column; align-items: flex-start; }
+      .course-actions { width: 100%; justify-content: flex-end; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="animated-bg"></div>
+
+  <!-- Navbar -->
+  <nav class="navbar">
+    <div class="brand" onclick="showPage('page-home')">
+      <div class="ms-grid">
+        <div class="ms-red"></div><div class="ms-green"></div>
+        <div class="ms-blue"></div><div class="ms-yellow"></div>
+      </div>
+      <span>Microsoft Certificate Tracker</span>
+    </div>
+
+    <ul class="nav-links">
+      <li><a href="#" onclick="showPage('page-home')" class="active">Home</a></li>
+      <li><a href="#domains" onclick="showPage('page-home')">Domains</a></li>
+      <li><a href="https://learn.microsoft.com/en-us/credentials/browse/" target="_blank">Certifications</a></li>
+      <li><a href="https://learn.microsoft.com/" target="_blank">Resources</a></li>
+      <li><a href="#" onclick="showPage('page-tracker')">Progress Tracker</a></li>
+    </ul>
+
+    <div class="nav-actions">
+      <button class="theme-toggle" onclick="toggleTheme()" id="theme-btn">
+        🌙 Dark
+      </button>
+
+      <div id="nav-auth-buttons" style="display: flex; gap: 1rem;">
+        <a href="#" onclick="showPage('page-login')" class="btn-login">Log In</a>
+        <a href="#" onclick="showPage('page-signup')" class="btn-signup">Sign Up</a>
+      </div>
+
+      <div class="user-profile" id="nav-user-profile" style="display: none;">
+        <span class="user-name" id="display-user-name">Welcome!</span>
+        <a href="#" onclick="handleLogout()" class="btn-login">Log Out</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- PAGE: LOGIN -->
+  <div id="page-login" class="view-page">
+    <div class="auth-container">
+      <div class="auth-card">
+        <h2 class="auth-title">Welcome Back</h2>
+        <p class="auth-subtitle">Sign in to continue your learning journey</p>
+        <form id="login-form" onsubmit="handleLogin(event)">
+          <div class="form-group">
+            <label for="login-email">Email Address</label>
+            <input type="email" id="login-email" placeholder="name@example.com" required>
+          </div>
+          <div class="form-group">
+            <label for="login-password">Password</label>
+            <input type="password" id="login-password" placeholder="Enter password" required>
+          </div>
+          <button type="submit" class="auth-btn">Log In</button>
+        </form>
+        <div class="auth-footer">
+          Don't have an account? <a href="#" onclick="showPage('page-signup')">Sign Up</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PAGE: SIGNUP -->
+  <div id="page-signup" class="view-page">
+    <div class="auth-container">
+      <div class="auth-card">
+        <h2 class="auth-title">Create Account</h2>
+        <p class="auth-subtitle">Join thousands of Microsoft learners today</p>
+        <form id="signup-form" onsubmit="handleSignup(event)">
+          <div class="form-group">
+            <label for="signup-email">Email Address</label>
+            <input type="email" id="signup-email" placeholder="name@example.com" required>
+          </div>
+          <div class="form-group">
+            <label for="signup-username">Username</label>
+            <input type="text" id="signup-username" placeholder="Choose a username" required>
+          </div>
+          <div class="form-group">
+            <label for="signup-password">New Password</label>
+            <input type="password" id="signup-password" placeholder="Create a password" required>
+          </div>
+          <div class="form-group">
+            <label for="signup-confirm-password">Confirm Password</label>
+            <input type="password" id="signup-confirm-password" placeholder="Confirm your password" required>
+            <div id="signup-error" class="error-msg">Passwords do not match!</div>
+          </div>
+          <button type="submit" class="auth-btn">Sign Up</button>
+        </form>
+        <div class="auth-footer">
+          Already have an account? <a href="#" onclick="showPage('page-login')">Log In</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PAGE 1: HOME PAGE -->
+  <div id="page-home" class="view-page active">
+    
+    <section class="hero">
+      <div class="hero-content">
+        <div class="badge">★ 100% Free Microsoft Learn Resources</div>
+        <h1 class="hero-title">Learn. Practice.<br>Get <span>Certified.</span></h1>
+        <p class="hero-desc">
+          Microsoft Certificate Tracker is your one-stop platform to explore Microsoft Learn courses across multiple domains and earn achievements that build your future.
+        </p>
+        <div class="hero-buttons">
+          <a href="#domains" class="btn-primary">
+            Explore Courses &rarr;
+          </a>
+          <a href="https://learn.microsoft.com/en-us/credentials/" target="_blank" class="btn-secondary">
+            ▶ How It Works
+          </a>
+        </div>
+      </div>
+
+      <div class="hero-visual">
+        <div class="cert-card-3d">
+          <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 18px;">
+            <div class="ms-grid">
+              <div class="ms-red"></div><div class="ms-green"></div>
+              <div class="ms-blue"></div><div class="ms-yellow"></div>
+            </div>
+            <strong style="font-size: 1.3rem;">Microsoft Learn</strong>
+          </div>
+          <p style="font-size: 1.1rem; color: #64748b; margin-bottom: 22px;">Certificate of Achievement</p>
+          <div style="background: #f1f5f9; height: 90px; border-radius: 12px; margin-bottom: 18px; display: flex; align-items: center; justify-content: center;">
+            <span style="font-size: 3rem;">🏆</span>
+          </div>
+          <div style="height: 12px; width: 70%; background: #e2e8f0; border-radius: 6px;"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="features-ribbon">
+      <div class="feature-item">
+        <div class="feature-icon f-1">📖</div>
+        <div class="feature-text">
+          <h4>Free Microsoft Courses</h4>
+          <p>Access high-quality content completely free</p>
+        </div>
+      </div>
+
+      <div class="feature-item">
+        <div class="feature-icon f-2">🎖️</div>
+        <div class="feature-text">
+          <h4>Earn Achievements</h4>
+          <p>Complete modules and earn Microsoft badges</p>
+        </div>
+      </div>
+
+      <div class="feature-item">
+        <div class="feature-icon f-3">🏆</div>
+        <div class="feature-text">
+          <h4>Track Progress</h4>
+          <p>Monitor learning and milestones in real time</p>
+        </div>
+      </div>
+
+      <div class="feature-item">
+        <div class="feature-icon f-4">👥</div>
+        <div class="feature-text">
+          <h4>Build Your Career</h4>
+          <p>Gain skills and get industry recognized</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="domains-section" id="domains">
+      <h2 class="section-title">Explore Domains</h2>
+      <p class="section-subtitle">Choose a domain and start your learning journey today.</p>
+
+      <div class="domain-grid">
+        
+        <div class="domain-card" onclick="openDomain('ai-data')">
+          <div class="domain-img-wrapper">
+            <img src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=600&q=80](https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=600&q=80)" alt="AI & Data Science">
+          </div>
+          <div class="domain-content">
+            <div>
+              <h3>AI & Data Science</h3>
+              <p>Explore AI, Machine Learning, Data Analytics, and Azure AI services.</p>
+            </div>
+            <span class="domain-link link-ai">Explore Path &rarr;</span>
+          </div>
+        </div>
+
+        <div class="domain-card" onclick="openDomain('cloud')">
+          <div class="domain-img-wrapper">
+            <img src="https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=600&q=80" alt="Cloud Computing">
+          </div>
+          <div class="domain-content">
+            <div>
+              <h3>Cloud Computing</h3>
+              <p>Learn Azure, cloud architecture, governance, and infrastructure services.</p>
+            </div>
+            <span class="domain-link link-cloud">Explore Path &rarr;</span>
+          </div>
+        </div>
+
+        <div class="domain-card" onclick="openDomain('cyber')">
+          <div class="domain-img-wrapper">
+            <img src="https://images.unsplash.com/photo-1563986768609-322da13575f3?auto=format&fit=crop&w=600&q=80" alt="Cybersecurity">
+          </div>
+          <div class="domain-content">
+            <div>
+              <h3>Cybersecurity</h3>
+              <p>Build skills in security, identity, Microsoft Defender, and compliance.</p>
+            </div>
+            <span class="domain-link link-cyber">Explore Path &rarr;</span>
+          </div>
+        </div>
+
+        <div class="domain-card" onclick="openDomain('dev')">
+          <div class="domain-img-wrapper">
+            <img src="https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=600&q=80" alt="Development">
+          </div>
+          <div class="domain-content">
+            <div>
+              <h3>Development</h3>
+              <p>Learn C#, GitHub, ASP.NET Core, Azure SQL, and DevOps integration.</p>
+            </div>
+            <span class="domain-link link-dev">Explore Path &rarr;</span>
+          </div>
+        </div>
+
+      </div>
+    </section>
+  </div>
+
+  <!-- PAGE 2: COURSES PAGE -->
+  <div id="page-courses" class="view-page">
+    <section class="courses-page">
+      <div class="courses-container">
+        <button class="btn-back" onclick="showPage('page-home')">&larr; Back to Domains</button>
+        
+        <h2 id="domain-title" class="section-title" style="text-align: left;">Domain Title</h2>
+        <p id="domain-desc" class="section-subtitle" style="text-align: left; margin-bottom: 2.5rem;">Domain description goes here.</p>
+
+        <!-- Progress Metrics Box -->
+        <div class="progress-card">
+          <div class="progress-header">
+            <span class="progress-title">Domain Progress</span>
+            <span id="progress-percent" class="progress-percent">0%</span>
+          </div>
+          <div class="progress-bar-bg">
+            <div id="progress-bar-fill" class="progress-bar-fill"></div>
+          </div>
+          <p id="progress-count" class="progress-count">0 of 0 Courses Completed</p>
+        </div>
+
+        <!-- Gemini AI Dynamic Callout Box -->
+        <div id="gemini-card" class="gemini-card">
+          <div class="gemini-header">
+            <span class="gemini-badge">✨ Gemini AI Recommendation</span>
+          </div>
+          <p id="gemini-text" class="gemini-text">Select a course to start learning. Gemini AI will guide your next steps as you complete modules!</p>
+        </div>
+
+        <!-- Completion / Congratulations Banner -->
+        <div id="congrats-card" class="congrats-card">
+          <h3>🎉 Congratulations on Completing All Courses!</h3>
+          <p>You have mastered this domain path. Take the next step in your professional journey and claim your official certification credentials.</p>
+          <button class="btn-congrats" onclick="redirectToCredentials()">
+            Get Certified - Browse Credentials ↗
+          </button>
+        </div>
+
+        <!-- Course List -->
+        <div id="course-list" class="course-list"></div>
+
+      </div>
+    </section>
+  </div>
+  <!-- PAGE 3: PROGRESS TRACKER PAGE -->
+<div id="page-tracker" class="view-page">
+  <section class="courses-page">
+    <div class="courses-container">
+      <button class="btn-back" onclick="showPage('page-home')">&larr; Back to Home</button>
+      
+      <h2 class="section-title" style="text-align: left;">Overall Progress Tracker</h2>
+      <p class="section-subtitle" style="text-align: left; margin-bottom: 2.5rem;">
+        Monitor your learning milestones and completed courses across all Microsoft domains.
+      </p>
+
+      <!-- Overall Summary Card -->
+
+
+      <!-- Individual Domain Progress Breakdown -->
+      <div id="tracker-domain-list" class="course-list" style="margin-top: 2rem;">
+        <!-- Dynamically rendered domain cards will appear here -->
+      </div>
+
+    </div>
+  </section>
+</div>
+
+  <script>
+    let currentDomain = null;
+    let currentUser = null;
+
+    const userProgress = {
+      'ai-data': [],
+      'cloud': [],
+      'cyber': [],
+      'dev': []
+    };
+
+    const domainData = {
+      'ai-data': {
+        title: 'AI & Data Science Path',
+        description: 'Complete these Microsoft Learn learning paths to gain expertise in AI and Data Science.',
+        courses: [
+          { id: 'ai-1', title: 'Introduction to AI concepts', desc: 'In this module, you learn about the kinds of solutions AI can make possible and considerations for responsible AI practices.', link: 'https://learn.microsoft.com/en-us/training/modules/get-started-ai-fundamentals/' },
+          { id: 'ai-2', title: 'Microsoft Azure AI Fundamentals', desc: 'Understand fundamental Artificial Intelligence concepts and related Azure services.', link: 'https://learn.microsoft.com/en-us/credentials/certifications/azure-ai-fundamentals/' },
+          { id: 'ai-3', title: 'Introduction to Azure Data Core Concepts', desc: 'Data is the foundation on which software is built. Learn common data formats, workloads, and roles.', link: 'https://learn.microsoft.com/en-us/training/paths/azure-data-fundamentals-explore-core-data-concepts/' },
+          { id: 'ai-4', title: 'Get Started with Microsoft Data Analytics', desc: 'Explore the role of a data analyst and how Power BI transforms data into impactful reports.', link: 'https://learn.microsoft.com/en-us/training/paths/data-analytics-microsoft/' },
+          { id: 'ai-5', title: 'Creating Machine Learning Models', desc: 'Learn core principles of machine learning to train, evaluate, and deploy models on Azure.', link: 'https://learn.microsoft.com/en-us/training/paths/create-machine-learn-models/' },
+          { id: 'ai-6',  title: 'Developing Generative AI Apps', desc: 'Learn how to build and deploy generative AI applications using Microsoft Azure and other platforms.', link: 'https://learn.microsoft.com/en-us/training/paths/develop-generative-ai-apps/'},
+          { id: 'ai-7',  title: 'Develop AI agents on Azure', desc: ' Learn how to build generative AI applications that use language models to interact with your users.', link: 'https://learn.microsoft.com/en-us/training/paths/develop-generative-ai-apps/'},
+          { id: 'ai-8',  title: 'Develop natural language solutions in Azure', desc: ' Natural language solutions use language models to interpret the semantic meaning of written or spoken language, and in some cases respond based on that meaning. You can use Microsoft Foundry to develop AI apps and agents that can analyze text, transcribe and synthesize speech, and translate languages.', link: 'https://learn.microsoft.com/en-us/training/paths/develop-language-solutions-azure-ai/'},
+          { id: 'ai-9',  title: 'Extract insights from visual data on Azure', desc: 'Use generative AI, computer vision, and Content Understanding capabilities in Azure to extract insights from visual data', link: 'https://learn.microsoft.com/en-us/training/paths/insight-visual-data/'},
+          
+
+        ],
+        // Gemini AI Step Explanations (Keyed by next unlocked index)
+        explanations: {
+          0: "Start strong! Building a base understanding of artificial intelligence concepts is crucial before diving into cloud architecture.",
+          1: "Great job completing the concepts! Now that you grasp basic AI theory, stepping into Azure AI Fundamentals will help you apply those concepts within real cloud environments.",
+          2: "Awesome progress! AI relies heavily on structured data, so understanding Azure Data Core Concepts next ensures your models will have strong data foundations.",
+          3: "Fantastic work! With AI and data fundamentals down, exploring Data Analytics and Power BI allows you to turn raw data into readable, decision-ready insights.",
+          4: "Outstanding milestone! Now that you understand data pipelines, you are ready to construct and deploy customized Machine Learning models directly on Azure."
+        }
+      },
+      'cloud': {
+        title: 'Cloud Computing Path',
+        description: 'Master Microsoft Azure cloud architecture, administration, and infrastructure solutions.',
+        courses: [
+          { id: 'cloud-1', title: 'Describe Cloud Concepts', desc: 'Teaches you basic cloud concepts, Azure services overview, and hands-on exercises.', link: 'https://learn.microsoft.com/en-us/training/paths/microsoft-azure-fundamentals-describe-cloud-concepts/' },
+          { id: 'cloud-2', title: 'Describe Azure Architecture & Services', desc: 'Implement, manage, and monitor cloud identity, storage, compute, and virtual networks.', link: 'https://learn.microsoft.com/en-us/training/paths/azure-fundamentals-describe-azure-architecture-services/r/' },
+          { id: 'cloud-3', title: 'Describe Azure Management & Governance', desc: 'Design identity, governance, monitoring, and business continuity solutions in Azure.', link: 'https://learn.microsoft.com/en-us/training/paths/describe-azure-management-governance/' },
+          { id: 'cloud-4', title: 'Azure Well-Architected Framework', desc: 'Design and build secure, scalable, and high-performing cloud solutions in Azure.', link: 'https://learn.microsoft.com/en-us/training/paths/azure-well-architected-framework/' }
+        ],
+        explanations: {
+          0: "Welcome to Cloud Computing! Understanding general cloud principles gives you the necessary context to navigate Azure infrastructure.",
+          1: "Excellent start! Now that you know general cloud principles, diving into core Azure Architecture will show you how virtual networks, compute, and storage operate.",
+          2: "Great step forward! With Azure architecture mastered, learning Governance & Management helps you securely organize, monitor, and scale enterprise workloads.",
+          3: "Impressive progress! Now that you manage cloud resources, mastering the Well-Architected Framework equips you to design top-tier, resilient enterprise systems."
+        }
+      },
+      'cyber': {
+        title: 'Cybersecurity Path',
+        description: 'Protect enterprise infrastructure, manage access identity, and respond to threats.',
+        courses: [
+          { id: 'cyber-1', title: 'Concepts of Cybersecurity', desc: 'Learn basic cybersecurity concepts and strategies to protect against modern cyberthreats.', link: 'https://learn.microsoft.com/en-us/training/paths/describe-basic-concepts-of-cybersecurity/' },
+          { id: 'cyber-2', title: 'Understand Microsoft Entra ID', desc: 'Explore identity governance, P1/P2 features, and device management capabilities.', link: 'https://learn.microsoft.com/en-us/training/modules/understand-azure-active-directory/' },
+          { id: 'cyber-3', title: 'Microsoft Defender XDR', desc: 'Analyze threat data across domains and remediate security risks using Microsoft Defender.', link: 'https://learn.microsoft.com/en-us/training/paths/sc-200-mitigate-threats-using-microsoft-365-defender/' },
+          { id: 'cyber-4', title: 'Azure Resource Security', desc: 'Learn how to secure resources using Azure policies, RBAC, and threat protection.', link: 'https://learn.microsoft.com/en-us/training/paths/implement-resource-mgmt-security/' }
+        ],
+        explanations: {
+          0: "Cybersecurity starts here! Gaining baseline knowledge of threat landscapes is essential before locking down system components.",
+          1: "Solid foundation built! Identity is the first line of defense in modern security, making Microsoft Entra ID the logical next shield to master.",
+          2: "Great work securing identities! Stepping up to Microsoft Defender XDR allows you to actively monitor, detect, and neutralize complex cross-domain threats.",
+          3: "You are on a roll! Applying your threat analysis skills directly to Azure Resource Security will ensure end-to-end protection across all cloud infrastructure."
+        }
+      },
+      'dev': {
+        title: 'Development Path',
+        description: 'Build modern software applications, cloud APIs, and enterprise integrations.',
+        courses: [
+          { id: 'dev-1', title: 'Get Started with C#', desc: 'Learn basic syntax and core concepts of object-oriented C# development.', link: 'https://learn.microsoft.com/en-us/training/paths/get-started-c-sharp-part-1/' },
+          { id: 'dev-2', title: 'GitHub Foundations', desc: 'Discover repositories, commits, branches, pull requests, and code management.', link: 'https://learn.microsoft.com/en-us/training/courses/gh-900t00' },
+          { id: 'dev-3', title: 'ASP.NET Core Fundamentals', desc: 'Build scalable web applications and web APIs using the modern ASP.NET platform.', link: 'https://learn.microsoft.com/en-us/training/paths/aspnet-core-fundamentals/' },
+          { id: 'dev-4', title: 'Azure SQL Database Security', desc: 'Implement enterprise security for Azure SQL Database and SQL Managed Instance.', link: 'https://learn.microsoft.com/en-us/training/paths/implement-azure-sql-database-security/' }
+        ],
+        explanations: {
+          0: "Kickstart your dev journey! C# syntax provides the core programming foundation required across the Microsoft development ecosystem.",
+          1: "Nice job learning C#! Version control is essential for any modern software builder, making GitHub Foundations the perfect next step for managing your code.",
+          2: "Awesome milestone! Now that you can write code and track versions, ASP.NET Core will teach you how to build robust web services and APIs.",
+          3: "Great progress! Connecting web apps to secure databases is key, so mastering Azure SQL Database Security completes your full-stack cloud skill set."
+        }
+      }
+    };
+
+    function toggleTheme() {
+      const body = document.documentElement;
+      const themeBtn = document.getElementById('theme-btn');
+
+      if (body.getAttribute('data-theme') === 'light') {
+        body.setAttribute('data-theme', 'dark');
+        themeBtn.innerText = '🌙 Dark';
+      } else {
+        body.setAttribute('data-theme', 'light');
+        themeBtn.innerText = '☀️ Light';
+      }
+    }
+
+    function showPage(pageId) {
+      document.querySelectorAll('.view-page').forEach(page => page.classList.remove('active'));
+      document.getElementById(pageId).classList.add('active');
+      window.scrollTo(0, 0);
+    }
+    // Modify your existing showPage function to trigger tracker rendering when selected
+function showPage(pageId) {
+  document.querySelectorAll('.view-page').forEach(page => page.classList.remove('active'));
+  document.getElementById(pageId).classList.add('active');
+  
+  if (pageId === 'page-tracker') {
+    renderTrackerPage();
+  }
+  
+  window.scrollTo(0, 0);
+}
+
+// Function to calculate and display progress across all domains
+function renderTrackerPage() {
+  const trackerListEl = document.getElementById('tracker-domain-list');
+  trackerListEl.innerHTML = '';
+
+  let totalCoursesOverall = 0;
+  let completedCoursesOverall = 0;
+
+  Object.keys(domainData).forEach(domainKey => {
+    const domain = domainData[domainKey];
+    const completedList = userProgress[domainKey] || [];
+    
+    const domainTotal = domain.courses.length;
+    const domainCompleted = completedList.length;
+    const domainPercent = domainTotal > 0 ? Math.round((domainCompleted / domainTotal) * 100) : 0;
+
+    totalCoursesOverall += domainTotal;
+    completedCoursesOverall += domainCompleted;
+
+    const card = document.createElement('div');
+    card.className = 'progress-card';
+    card.style.cursor = 'pointer';
+    card.onclick = () => openDomain(domainKey);
+    card.innerHTML = `
+      <div class="progress-header">
+        <div>
+          <h3 style="font-size: 1.5rem; font-weight: 800; margin-bottom: 0.25rem;">${domain.title}</h3>
+          <span style="font-size: 1.1rem; color: var(--text-muted);">${domainCompleted} of ${domainTotal} Courses Completed</span>
+        </div>
+        <span class="progress-percent" style="font-size: 2.2rem;">${domainPercent}%</span>
+      </div>
+      <div class="progress-bar-bg">
+        <div class="progress-bar-fill" style="width: ${domainPercent}%;"></div>
+      </div>
+    `;
+    trackerListEl.appendChild(card);
+  });
+
+  const overallPercent = totalCoursesOverall > 0 ? Math.round((completedCoursesOverall / totalCoursesOverall) * 100) : 0;
+
+  document.getElementById('overall-percent').innerText = `${overallPercent}%`;
+  document.getElementById('overall-bar-fill').style.width = `${overallPercent}%`;
+  document.getElementById('overall-count').innerText = `${completedCoursesOverall} of ${totalCoursesOverall} Total Courses Completed`;
+}
+
+    function handleSignup(event) {
+      event.preventDefault();
+      const email = document.getElementById('signup-email').value;
+      const username = document.getElementById('signup-username').value;
+      const password = document.getElementById('signup-password').value;
+      const confirmPassword = document.getElementById('signup-confirm-password').value;
+      const errorEl = document.getElementById('signup-error');
+
+      if (password !== confirmPassword) {
+        errorEl.style.display = 'block';
+        return;
+      }
+
+      errorEl.style.display = 'none';
+      currentUser = { username, email };
+      updateUIForUser();
+      document.getElementById('signup-form').reset();
+      showPage('page-home');
+    }
+
+    function handleLogin(event) {
+      event.preventDefault();
+      const email = document.getElementById('login-email').value;
+      const username = email.split('@')[0];
+
+      currentUser = { username, email };
+      updateUIForUser();
+      document.getElementById('login-form').reset();
+      showPage('page-home');
+    }
+
+    function handleLogout() {
+      currentUser = null;
+      document.getElementById('nav-auth-buttons').style.display = 'flex';
+      document.getElementById('nav-user-profile').style.display = 'none';
+      showPage('page-home');
+    }
+
+    function updateUIForUser() {
+      if (currentUser) {
+        document.getElementById('nav-auth-buttons').style.display = 'none';
+        document.getElementById('nav-user-profile').style.display = 'flex';
+        document.getElementById('display-user-name').innerText = `Hi, ${currentUser.username}`;
+      }
+    }
+
+    function openDomain(domainKey) {
+      currentDomain = domainKey;
+      const domain = domainData[domainKey];
+
+      document.getElementById('domain-title').innerText = domain.title;
+      document.getElementById('domain-desc').innerText = domain.description;
+
+      renderCourses();
+      showPage('page-courses');
+    }
+
+    function renderCourses() {
+      const domain = domainData[currentDomain];
+      const completedList = userProgress[currentDomain];
+      const courseListEl = document.getElementById('course-list');
+      const congratsEl = document.getElementById('congrats-card');
+      const geminiTextEl = document.getElementById('gemini-text');
+
+      courseListEl.innerHTML = '';
+
+      domain.courses.forEach((course, index) => {
+        const isCompleted = completedList.includes(course.id);
+        const isUnlocked = index === 0 || completedList.includes(domain.courses[index - 1].id);
+
+        let itemClass = 'course-item';
+        if (isCompleted) itemClass += ' completed';
+        if (!isUnlocked) itemClass += ' locked';
+
+        let buttonText = '○ Mark as Completed';
+        if (isCompleted) {
+          buttonText = '✓ Completed (Undo)';
+        } else if (!isUnlocked) {
+          buttonText = '🔒 Locked';
+        }
+
+        const card = document.createElement('div');
+        card.className = itemClass;
+        card.innerHTML = `
+          <div class="course-info">
+            <h4>${course.title}</h4>
+            <p>${course.desc}</p>
+          </div>
+          <div class="course-actions">
+            <a href="${course.link}" target="_blank" class="btn-learn ${!isUnlocked ? 'disabled' : ''}">
+              Learn ↗
+            </a>
+            <button class="btn-status" ${!isUnlocked ? 'disabled' : ''} onclick="toggleCourseProgress('${course.id}', ${index})">
+              ${buttonText}
+            </button>
+          </div>
+        `;
+        courseListEl.appendChild(card);
+      });
+
+      const total = domain.courses.length;
+      const completedCount = completedList.length;
+      const percentage = Math.round((completedCount / total) * 100);
+
+      document.getElementById('progress-percent').innerText = `${percentage}%`;
+      document.getElementById('progress-bar-fill').style.width = `${percentage}%`;
+      document.getElementById('progress-count').innerText = `${completedCount} of ${total} Courses Completed`;
+
+      // Update Gemini AI Assistant Explanation
+      if (completedCount === total && total > 0) {
+        geminiTextEl.innerText = "🌟 Outstanding job completing the full track! You have satisfied all prerequisites for this domain and are ready to tackle official Microsoft certification exams.";
+        congratsEl.style.display = 'block';
+      } else {
+        const nextCourseIdx = completedCount;
+        if (domain.explanations && domain.explanations[nextCourseIdx]) {
+          geminiTextEl.innerText = domain.explanations[nextCourseIdx];
+        } else {
+          geminiTextEl.innerText = "Keep up the momentum! Complete your current course to unlock tailored AI guidance for your next step.";
+        }
+        congratsEl.style.display = 'none';
+      }
+    }
+
+    function toggleCourseProgress(courseId, index) {
+      const list = userProgress[currentDomain];
+      const domain = domainData[currentDomain];
+
+      if (list.includes(courseId)) {
+        userProgress[currentDomain] = list.filter(id => {
+          const courseIdx = domain.courses.findIndex(c => c.id === id);
+          return courseIdx < index;
+        });
+      } else {
+        list.push(courseId);
+      }
+
+      renderCourses();
+    }
+
+    function redirectToCredentials() {
+      window.open('https://learn.microsoft.com/en-us/credentials/browse/', '_blank');
+    }
+  </script>
+</body>
+</html>
